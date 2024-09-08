@@ -1,6 +1,6 @@
---- tmpEntitlements	2024-09-08 21:41:24
-+++ Meshtastic/Meshtastic.entitlements	2024-09-08 21:41:42
-@@ -18,7 +18,5 @@
+--- tmp	2024-09-08 21:55:27
++++ Meshtastic/Meshtastic.entitlements	2024-09-08 21:55:32
+@@ -18,5 +18,7 @@
  	<true/>
  	<key>com.apple.security.personal-information.location</key>
  	<true/>
