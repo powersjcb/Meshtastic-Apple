@@ -11,10 +11,15 @@ import MapKit
 @available(iOS 17.0, macOS 14.0, *)
 struct MeshMapContent: MapContent {
 
+	var modemPreset: ModemPresets = ModemPresets(
+		rawValue: UserDefaults.modemPreset
+	) ?? ModemPresets.longFast
+	
 	/// Parameters
 	@Binding var showUserLocation: Bool
 	@AppStorage("meshMapShowNodeHistory") private var showNodeHistory = false
 	@AppStorage("meshMapShowRouteLines") private var showRouteLines = false
+	@AppStorage("meshMapShowLinkStrengths") private var showLinkStrengths = false
 	@AppStorage("enableMapConvexHull") private var showConvexHull = false
 	@Binding var showTraffic: Bool
 	@Binding var showPointsOfInterest: Bool
@@ -36,14 +41,30 @@ struct MeshMapContent: MapContent {
 
 	var delay: Double = 0
 	@State private var scale: CGFloat = 0.5
+	@State private var connectedNodeCoordinate = LocationsHandler.DefaultLocation
 
 	@MapContentBuilder
 	var positionAnnotations: some MapContent {
+		/// draw lines connecting currentNode
+		if showLinkStrengths {
+			// todo: powersjcb - add config to toggle this - default to off
+			let connectedNodeNum = positions[0].nodePosition?.num // todo: fix this to actually select ourselves
+			if let connectedNodePosition = positions.first(where: { $0.nodePosition?.num == connectedNodeNum })?.coordinate {
+				ForEach(positions.filter { $0.nodePosition?.num != connectedNodeNum && $0.nodePosition?.snr != 0 && $0.nodePosition?.hopsAway == 0 }) { position in
+					/// draw line from self to node
+					let hopCoords: [CLLocationCoordinate2D] = [connectedNodePosition, position.coordinate]
+					if let nodePosition = position.nodePosition {
+						MapPolyline(coordinates: hopCoords).stroke(getSnrColor(snr: nodePosition.snr, preset: modemPreset), lineWidth: 3)
+					}
+				}
+			}
+		}
+
 		ForEach(positions, id: \.id) { position in
 			/// Node color from node.num
 			let nodeColor = UIColor(hex: UInt32(position.nodePosition?.num ?? 0))
 			let positionName = position.nodePosition?.user?.longName ?? "?"
-			/// Latest Position Anotations
+			/// Latest Position Annotations
 			Annotation(positionName, coordinate: position.coordinate) {
 				LazyVStack {
 					ZStack {

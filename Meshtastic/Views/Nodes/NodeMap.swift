@@ -20,6 +20,7 @@ struct NodeMap: View {
 	@State var enableMapRecentering: Bool = UserDefaults.enableMapRecentering
 	@State var enableMapRouteLines: Bool = UserDefaults.enableMapRouteLines
 	@State var enableMapNodeHistoryPins: Bool = UserDefaults.enableMapNodeHistoryPins
+	@State var showLinkStrengths: Bool = UserDefaults.meshMapShowLinkStrengths
 	@State var enableOfflineMaps: Bool = UserDefaults.enableOfflineMaps
 	@State var selectedTileServer: MapTileServer = UserDefaults.mapTileServer
 	@State var enableOverlayServer: Bool = UserDefaults.enableOverlayServer
@@ -61,6 +62,7 @@ struct NodeMap: View {
 					userTrackingMode: selectedTracking.MKUserTrackingModeValue(),
 					showNodeHistory: enableMapNodeHistoryPins,
 					showRouteLines: enableMapRouteLines,
+					showLinkStrengths: showLinkStrengths,
 					customMapOverlay: self.customMapOverlay
 				)
 				VStack(alignment: .trailing) {

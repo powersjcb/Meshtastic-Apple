@@ -16,6 +16,7 @@ struct MapSettingsForm: View {
 	@State private var currentDetent = PresentationDetent.medium
 	@AppStorage("meshMapShowNodeHistory") private var nodeHistory = false
 	@AppStorage("meshMapShowRouteLines") private var routeLines = false
+	@AppStorage("meshMapShowLinkStrengths") private var showLinkStrengths = false
 	@AppStorage("enableMapConvexHull") private var convexHull = false
 	@AppStorage("enableMapWaypoints") private var waypoints = true
 	@Binding var traffic: Bool
@@ -62,6 +63,9 @@ struct MapSettingsForm: View {
 						.toggleStyle(SwitchToggleStyle(tint: .accentColor))
 						.onTapGesture {
 							UserDefaults.enableMapWaypoints = !waypoints
+						}
+						Toggle(isOn: $showLinkStrengths) {
+							Label("Show signal strength ", systemImage: "person.2.wave.2")
 						}
 					}
 
