@@ -5,7 +5,7 @@ import OSLog
 class LocalNotificationManager {
 
     var notifications = [Notification]()
-	
+
 	let thumbsUpAction = UNNotificationAction(identifier: "messageNotification.thumbsUpAction", title:
 													"👍 \(Tapbacks.thumbsUp.description)", options: [])
 		let thumbsDownAction = UNNotificationAction(identifier: "messageNotification.thumbsDownAction", title:
@@ -14,7 +14,6 @@ class LocalNotificationManager {
 					identifier: "messageNotification.replyInputAction",
 					title: "reply".localized,
 					options: [])
-	
 
     // Step 1 Request Permissions for notifications
     private func requestAuthorization() {
@@ -43,13 +42,13 @@ class LocalNotificationManager {
     private func scheduleNotifications() {
 		let messageNotificationCategory = UNNotificationCategory(
 				 identifier: "messageNotificationCategory",
-				 actions: [thumbsUpAction, thumbsDownAction,replyInputAction],
+				 actions: [thumbsUpAction, thumbsDownAction, replyInputAction],
 				 intentIdentifiers: [],
 				 options: .customDismissAction
 				)
 
 				UNUserNotificationCenter.current().setNotificationCategories([messageNotificationCategory])
-		
+
         for notification in notifications {
             let content = UNMutableNotificationContent()
             content.subtitle = notification.subtitle
@@ -74,7 +73,6 @@ class LocalNotificationManager {
 			if notification.userNum != nil {
 				content.userInfo["userNum"] = notification.userNum
 			}
-
 
             let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
             let request = UNNotificationRequest(identifier: notification.id, content: content, trigger: trigger)

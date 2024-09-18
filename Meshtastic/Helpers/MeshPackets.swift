@@ -290,7 +290,7 @@ func nodeInfoPacket (nodeInfo: NodeInfo, channel: UInt32, context: NSManagedObje
 
 			newNode.firstHeard = Date(timeIntervalSince1970: TimeInterval(Int64(nodeInfo.lastHeard)))
 			newNode.lastHeard = Date(timeIntervalSince1970: TimeInterval(Int64(nodeInfo.lastHeard)))
-			
+
 			// note about NodeInfoEntity['snr']
 			// this field should probably actually be nullable
 			// we are storing a default 0 in the field when unknown, but 0 (dB) also a valid SNR reading
@@ -305,7 +305,7 @@ func nodeInfoPacket (nodeInfo: NodeInfo, channel: UInt32, context: NSManagedObje
 					newNode.snr = nodeInfo.snr
 				}
 			}
-			
+
 			if nodeInfo.hasUser {
 
 				let newUser = UserEntity(context: context)
@@ -377,7 +377,7 @@ func nodeInfoPacket (nodeInfo: NodeInfo, channel: UInt32, context: NSManagedObje
 			fetchedNode[0].lastHeard = Date(timeIntervalSince1970: TimeInterval(Int64(nodeInfo.lastHeard)))
 			fetchedNode[0].channel = Int32(nodeInfo.channel)
 			fetchedNode[0].favorite = nodeInfo.isFavorite
-			
+
 			// todo: powersjcb this needs a feature flag - the firmware updates for this are going to take a while before it can get supported correctly
 			if requireHasHopsAway {
 				// strict mode - ignores snr data unless firmware confirms its actually 0 hops away
@@ -395,7 +395,7 @@ func nodeInfoPacket (nodeInfo: NodeInfo, channel: UInt32, context: NSManagedObje
 					fetchedNode[0].snr = nodeInfo.snr
 				}
 			}
-			
+
 			if nodeInfo.hasUser {
 				if fetchedNode[0].user == nil {
 					fetchedNode[0].user = UserEntity(context: context)
@@ -863,7 +863,7 @@ func textMessageAppPacket(
 		}
 	}
 	let rangeTest = messageText?.contains(rangeTestRegex) ?? false && messageText?.starts(with: "seq ") ?? false
-	
+
 	if !wantRangeTestPackets && rangeTest {
 		return
 	}
@@ -876,16 +876,16 @@ func textMessageAppPacket(
 			}
 		}
 	}
-	
+
 	if messageText?.count ?? 0 > 0 {
 		MeshLogger.log("💬 \("mesh.log.textmessage.received".localized)")
-		
+
 		let messageUsers = UserEntity.fetchRequest()
 		messageUsers.predicate = NSPredicate(format: "num IN %@", [packet.to, packet.from])
-		
+
 		do {
 			let fetchedUsers = try context.fetch(messageUsers)
-			
+
 			let newMessage = MessageEntity(context: context)
 			newMessage.messageId = Int64(packet.id)
 			if packet.rxTime > 0 {
@@ -908,20 +908,20 @@ func textMessageAppPacket(
 					newMessage.read = true
 				}
 			}
-			
+
 			if packet.decoded.replyID > 0 {
 				newMessage.replyID = Int64(packet.decoded.replyID)
 			}
-			
+
 			if fetchedUsers.first(where: { $0.num == packet.to }) != nil && packet.to != Constants.maximumNodeNum {
 				if !storeForwardBroadcast {
 					newMessage.toUser = fetchedUsers.first(where: { $0.num == packet.to })
 				}
 			}
-			
+
 			if fetchedUsers.first(where: { $0.num == packet.from }) != nil {
 				newMessage.fromUser = fetchedUsers.first(where: { $0.num == packet.from })
-				
+
 				if !(newMessage.fromUser?.publicKey?.isEmpty ?? true) {
 					// We have a key, check if it matches
 					if newMessage.fromUser?.publicKey != newMessage.publicKey {
@@ -935,23 +935,23 @@ func textMessageAppPacket(
 						newMessage.fromUser?.publicKey = packet.publicKey
 					}
 				}
-				
+
 				if packet.rxTime > 0 {
 					newMessage.fromUser?.userNode?.lastHeard = Date(timeIntervalSince1970: TimeInterval(Int64(packet.rxTime)))
 				} else {
 					newMessage.fromUser?.userNode?.lastHeard = Date()
 				}
 			}
-			
+
 			newMessage.messagePayload = messageText
 			newMessage.messagePayloadMarkdown = generateMessageMarkdown(message: messageText!)
-			
+
 			if packet.to != Constants.maximumNodeNum && newMessage.fromUser != nil {
 				newMessage.fromUser?.lastMessage = Date()
 			}
-			
+
 			var messageSaved = false
-			
+
 			do {
 				try context.save()
 				Logger.data.info("💾 Saved a new message for \(newMessage.messageId)")
@@ -1034,7 +1034,6 @@ func textMessageAppPacket(
 		}
 	}
 }
-
 
 func waypointPacket (packet: MeshPacket, context: NSManagedObjectContext) {
 

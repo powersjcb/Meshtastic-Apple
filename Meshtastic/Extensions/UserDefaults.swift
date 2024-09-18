@@ -97,7 +97,7 @@ extension UserDefaults {
 
 	@UserDefault(.meshMapDistance, defaultValue: 800000)
 	static var meshMapDistance: Double
-	
+
 	@UserDefault(.meshMapShowLinkStrengths, defaultValue: false)
 	static var meshMapShowLinkStrengths: Bool
 

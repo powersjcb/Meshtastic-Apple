@@ -14,7 +14,7 @@ struct MeshMapContent: MapContent {
 	var modemPreset: ModemPresets = ModemPresets(
 		rawValue: UserDefaults.modemPreset
 	) ?? ModemPresets.longFast
-	
+
 	/// Parameters
 	@Binding var showUserLocation: Bool
 	@AppStorage("meshMapShowNodeHistory") private var showNodeHistory = false

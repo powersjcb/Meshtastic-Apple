@@ -92,7 +92,7 @@ struct Connect: View {
 									}
 									VStack {
 										let localStats = node?.telemetries?.filtered(using: NSPredicate(format: "metricsType == 6")).lastObject as? TelemetryEntity
-									
+
 										if localStats != nil {
 											Divider()
 											if localStats?.numTotalNodes ?? 0 >= 100 {
