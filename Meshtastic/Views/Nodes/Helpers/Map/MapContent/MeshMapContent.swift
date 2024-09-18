@@ -11,6 +11,7 @@ import MapKit
 @available(iOS 17.0, macOS 14.0, *)
 struct MeshMapContent: MapContent {
 
+	// todo: figure out if this is why this page crashes when clicking around before connecting device
 	var modemPreset: ModemPresets = ModemPresets(
 		rawValue: UserDefaults.modemPreset
 	) ?? ModemPresets.longFast
@@ -48,15 +49,16 @@ struct MeshMapContent: MapContent {
 		/// draw lines connecting currentNode
 		if showLinkStrengths {
 			// todo: powersjcb - add config to toggle this - default to off
-			let connectedNodeNum = positions[0].nodePosition?.num // todo: fix this to actually select ourselves
-			if let connectedNodePosition = positions.first(where: { $0.nodePosition?.num == connectedNodeNum })?.coordinate {
-				ForEach(positions.filter { $0.nodePosition?.num != connectedNodeNum && $0.nodePosition?.snr != 0 && $0.nodePosition?.hopsAway == 0 }) { position in
-					/// draw line from self to node
-					let hopCoords: [CLLocationCoordinate2D] = [connectedNodePosition, position.coordinate]
-					if let nodePosition = position.nodePosition {
-						MapPolyline(coordinates: hopCoords).stroke(getSnrColor(snr: nodePosition.snr, preset: modemPreset), lineWidth: 3)
+
+			if let connectedNodeNum = BLEManager.shared.connectedPeripheral?.num,
+				let connectedNodePosition = positions.first(where: { $0.nodePosition?.num == connectedNodeNum })?.coordinate {
+					ForEach(positions.filter { $0.nodePosition?.num != connectedNodeNum && $0.nodePosition?.snr != 0 && $0.nodePosition?.hopsAway == 0 }) { position in
+						/// draw line from self to node
+						let hopCoords: [CLLocationCoordinate2D] = [connectedNodePosition, position.coordinate]
+						if let nodePosition = position.nodePosition {
+							MapPolyline(coordinates: hopCoords).stroke(getSnrColor(snr: nodePosition.snr, preset: modemPreset), lineWidth: 3)
+						}
 					}
-				}
 			}
 		}
 
