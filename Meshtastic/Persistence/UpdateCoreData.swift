@@ -152,6 +152,7 @@ func upsertNodeInfoPacket (packet: MeshPacket, context: NSManagedObjectContext) 
 				newNode.firstHeard = Date()
 				newNode.lastHeard = Date()
 			}
+			// todo: powersjcb - audit if these values are correctly determined as being from the newNode in the firmware
 			newNode.snr = packet.rxSnr
 			newNode.rssi = packet.rxRssi
 			newNode.viaMqtt = packet.viaMqtt
@@ -160,7 +161,9 @@ func upsertNodeInfoPacket (packet: MeshPacket, context: NSManagedObjectContext) 
 				newNode.channel = Int32(packet.channel)
 			}
 			if let nodeInfoMessage = try? NodeInfo(serializedData: packet.decoded.payload) {
+				// todo: powersjcb figure out if we only write to hopsAway based on value of hasHopsAway per MeshPackets.swift
 				newNode.hopsAway = Int32(nodeInfoMessage.hopsAway)
+				newNode.hasHopsAway = nodeInfoMessage.hasHopsAway
 				newNode.favorite = nodeInfoMessage.isFavorite
 			}
 
