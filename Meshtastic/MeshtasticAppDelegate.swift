@@ -46,6 +46,58 @@ class MeshtasticAppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificat
 		withCompletionHandler completionHandler: @escaping () -> Void
 	) {
 		let userInfo = response.notification.request.content.userInfo
+
+		switch response.actionIdentifier {
+		case UNNotificationDefaultActionIdentifier:
+			break
+			case "messageNotification.thumbsUpAction":
+			if let channel = userInfo["channel"] as? Int32,
+			   let replyID = userInfo["messageId"] as? Int64 {
+				let tapbackResponse = !BLEManager.shared.sendMessage(
+					message: Tapbacks.thumbsUp.emojiString,
+					toUserNum: userInfo["userNum"] as? Int64 ?? 0,
+					channel: channel,
+					isEmoji: true,
+					replyID: replyID
+				)
+				Logger.services.info("Tapback response sent")
+			} else {
+				Logger.services.error("Failed to retrieve channel or messageId from userInfo")
+			}
+			case "messageNotification.thumbsDownAction":
+			if let channel = userInfo["channel"] as? Int32,
+			   let replyID = userInfo["messageId"] as? Int64 {
+				let tapbackResponse = !BLEManager.shared.sendMessage(
+					message: Tapbacks.thumbsDown.emojiString,
+					toUserNum: userInfo["userNum"] as? Int64 ?? 0,
+					channel: channel,
+					isEmoji: true,
+					replyID: replyID
+				)
+				Logger.services.info("Tapback response sent")
+			} else {
+				Logger.services.error("Failed to retrieve channel or messageId from userInfo")
+			}
+			case "messageNotification.replyInputAction":
+			if let userInput = (response as? UNTextInputNotificationResponse)?.userText,
+			   let channel = userInfo["channel"] as? Int32,
+			   let replyID = userInfo["messageId"] as? Int64 {
+				let tapbackResponse = !BLEManager.shared.sendMessage(
+					message: userInput,
+					toUserNum: userInfo["userNum"] as? Int64 ?? 0,
+					channel: channel,
+					isEmoji: false,
+					replyID: replyID
+				)
+				Logger.services.info("Actionable notification reply sent")
+			} else {
+				Logger.services.error("Failed to retrieve user input, channel, or messageId from userInfo")
+			}
+
+		default:
+			break
+		}
+
 		if let targetValue = userInfo["target"] as? String,
 		   let deepLink = userInfo["path"] as? String,
 		   let url = URL(string: deepLink) {

@@ -47,6 +47,7 @@ extension UserDefaults {
 		case mapLayer
 		case meshMapDistance
 		case enableMapWaypoints
+		case meshMapShowLinkStrengths
 		case meshMapRecentering
 		case meshMapShowNodeHistory
 		case meshMapShowRouteLines
@@ -96,6 +97,9 @@ extension UserDefaults {
 
 	@UserDefault(.meshMapDistance, defaultValue: 800000)
 	static var meshMapDistance: Double
+
+	@UserDefault(.meshMapShowLinkStrengths, defaultValue: false)
+	static var meshMapShowLinkStrengths: Bool
 
 	@UserDefault(.enableMapWaypoints, defaultValue: false)
 	static var enableMapWaypoints: Bool

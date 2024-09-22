@@ -34,6 +34,7 @@ struct MapViewSwiftUI: UIViewRepresentable {
 	let userTrackingMode: MKUserTrackingMode
 	let showNodeHistory: Bool
 	let showRouteLines: Bool
+	let showLinkStrengths: Bool
 	let mapViewType: MKMapType = MKMapType.standard
 	// Offline Map Tiles
 	@AppStorage("lastUpdatedLocalMapFile") private var lastUpdatedLocalMapFile = 0

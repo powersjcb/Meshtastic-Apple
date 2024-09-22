@@ -28,6 +28,7 @@ struct MeshMap: View {
 	/// Map State User Defaults
 	@AppStorage("enableMapTraffic") private var showTraffic: Bool = false
 	@AppStorage("enableMapPointsOfInterest") private var showPointsOfInterest: Bool = false
+	@AppStorage("meshMapShowLinkStrengths") private var showLinkStrengths: Bool = false
 	@AppStorage("mapLayer") private var selectedMapLayer: MapLayer = .standard
 	// Map Configuration
 	@Namespace var mapScope
@@ -61,7 +62,14 @@ struct MeshMap: View {
 			ZStack {
 				MapReader { reader in
 					Map(position: $position, bounds: MapCameraBounds(minimumDistance: 1, maximumDistance: .infinity), scope: mapScope) {
-						MeshMapContent(showUserLocation: $showUserLocation, showTraffic: $showTraffic, showPointsOfInterest: $showPointsOfInterest, selectedMapLayer: $selectedMapLayer, selectedPosition: $selectedPosition, selectedWaypoint: $selectedWaypoint)
+						MeshMapContent(
+							showUserLocation: $showUserLocation,
+							showTraffic: $showTraffic,
+							showPointsOfInterest: $showPointsOfInterest,
+							selectedMapLayer: $selectedMapLayer,
+							selectedPosition: $selectedPosition,
+							selectedWaypoint: $selectedWaypoint
+						)
 					}
 					.mapScope(mapScope)
 					.mapStyle(mapStyle)

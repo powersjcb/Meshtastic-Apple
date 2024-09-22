@@ -15,6 +15,8 @@ import OSLog
 import ActivityKit
 #endif
 
+let requireHasHopsAway = true
+
 func generateMessageMarkdown (message: String) -> String {
 	if !message.isEmoji() {
 		let types: NSTextCheckingResult.CheckingType = [.address, .link, .phoneNumber]
@@ -251,6 +253,7 @@ func deviceMetadataPacket (metadata: DeviceMetadata, fromNum: Int64, sessionPass
 	}
 }
 
+/// upsert nodeInfo when new data arrives
 func nodeInfoPacket (nodeInfo: NodeInfo, channel: UInt32, context: NSManagedObjectContext) -> NodeInfoEntity? {
 
 	let logString = String.localizedStringWithFormat("mesh.log.nodeinfo.received %@".localized, String(nodeInfo.num))
@@ -272,6 +275,7 @@ func nodeInfoPacket (nodeInfo: NodeInfo, channel: UInt32, context: NSManagedObje
 			newNode.channel = Int32(nodeInfo.channel)
 			newNode.favorite = nodeInfo.isFavorite
 			newNode.hopsAway = Int32(nodeInfo.hopsAway)
+			newNode.hasHopsAway = nodeInfo.hasHopsAway
 
 			if nodeInfo.hasDeviceMetrics {
 				let telemetry = TelemetryEntity(context: context)
@@ -286,7 +290,22 @@ func nodeInfoPacket (nodeInfo: NodeInfo, channel: UInt32, context: NSManagedObje
 
 			newNode.firstHeard = Date(timeIntervalSince1970: TimeInterval(Int64(nodeInfo.lastHeard)))
 			newNode.lastHeard = Date(timeIntervalSince1970: TimeInterval(Int64(nodeInfo.lastHeard)))
-			newNode.snr = nodeInfo.snr
+
+			// note about NodeInfoEntity['snr']
+			// this field should probably actually be nullable
+			// we are storing a default 0 in the field when unknown, but 0 (dB) also a valid SNR reading
+			if requireHasHopsAway {
+				// strict mode - ignores snr data unless firmware confirms its actually 0 hops away
+				if newNode.hasHopsAway && newNode.hopsAway == 0 {
+					newNode.snr = nodeInfo.snr
+				}
+			} else {
+				// permissive mode - save snr as long if hopsAway is 0
+				if newNode.hopsAway == 0 {
+					newNode.snr = nodeInfo.snr
+				}
+			}
+
 			if nodeInfo.hasUser {
 
 				let newUser = UserEntity(context: context)
@@ -356,10 +375,26 @@ func nodeInfoPacket (nodeInfo: NodeInfo, channel: UInt32, context: NSManagedObje
 			fetchedNode[0].id = Int64(nodeInfo.num)
 			fetchedNode[0].num = Int64(nodeInfo.num)
 			fetchedNode[0].lastHeard = Date(timeIntervalSince1970: TimeInterval(Int64(nodeInfo.lastHeard)))
-			fetchedNode[0].snr = nodeInfo.snr
 			fetchedNode[0].channel = Int32(nodeInfo.channel)
 			fetchedNode[0].favorite = nodeInfo.isFavorite
-			fetchedNode[0].hopsAway = Int32(nodeInfo.hopsAway)
+
+			// todo: powersjcb this needs a feature flag - the firmware updates for this are going to take a while before it can get supported correctly
+			if requireHasHopsAway {
+				// strict mode - ignores snr data unless firmware confirms its actually 0 hops away
+				if nodeInfo.hasHopsAway {
+					fetchedNode[0].hopsAway = Int32(nodeInfo.hopsAway)
+					if nodeInfo.hopsAway == 0 {
+						fetchedNode[0].snr = nodeInfo.snr
+						fetchedNode[0].hasHopsAway = true
+					}
+				}
+			} else {
+				// permissive mode - still has problems from 2.3.x firmware
+				fetchedNode[0].hopsAway = Int32(nodeInfo.hopsAway)
+				if nodeInfo.hopsAway == 0 {
+					fetchedNode[0].snr = nodeInfo.snr
+				}
+			}
 
 			if nodeInfo.hasUser {
 				if fetchedNode[0].user == nil {
@@ -732,6 +767,7 @@ func telemetryPacket(packet: MeshPacket, connectedNode: Int64, context: NSManage
 					telemetry.metricsType = 6
 					Logger.statistics.info("📈 [Mesh Statistics] Channel Utilization: \(telemetryMessage.localStats.channelUtilization, privacy: .public) Airtime: \(telemetryMessage.localStats.airUtilTx, privacy: .public) Packets Sent: \(telemetryMessage.localStats.numPacketsTx, privacy: .public) Packets Received: \(telemetryMessage.localStats.numPacketsRx, privacy: .public) Bad Packets Received: \(telemetryMessage.localStats.numPacketsRxBad, privacy: .public) Nodes Online: \(telemetryMessage.localStats.numOnlineNodes, privacy: .public) of \(telemetryMessage.localStats.numTotalNodes, privacy: .public) nodes for Node: \(packet.from.toHex(), privacy: .public)")
 				}
+				// todo: powersjcb ask, "can these ever be from a fowarding node and not a target/source?"
 				telemetry.snr = packet.rxSnr
 				telemetry.rssi = packet.rxRssi
 				telemetry.time = Date(timeIntervalSince1970: TimeInterval(Int64(truncatingIfNeeded: telemetryMessage.time)))
@@ -816,12 +852,10 @@ func textMessageAppPacket(
 	context: NSManagedObjectContext,
 	appState: AppState
 ) {
-
 	var messageText = String(bytes: packet.decoded.payload, encoding: .utf8)
 	let rangeRef = Reference(Int.self)
 	let rangeTestRegex = Regex {
 		"seq "
-
 		TryCapture(as: rangeRef) {
 			OneOrMore(.digit)
 		} transform: { match in
@@ -844,13 +878,14 @@ func textMessageAppPacket(
 	}
 
 	if messageText?.count ?? 0 > 0 {
-
 		MeshLogger.log("💬 \("mesh.log.textmessage.received".localized)")
 
 		let messageUsers = UserEntity.fetchRequest()
 		messageUsers.predicate = NSPredicate(format: "num IN %@", [packet.to, packet.from])
+
 		do {
 			let fetchedUsers = try context.fetch(messageUsers)
+
 			let newMessage = MessageEntity(context: context)
 			newMessage.messageId = Int64(packet.id)
 			if packet.rxTime > 0 {
@@ -864,13 +899,16 @@ func textMessageAppPacket(
 			newMessage.isEmoji = packet.decoded.emoji == 1
 			newMessage.channel = Int32(packet.channel)
 			newMessage.portNum = Int32(packet.decoded.portnum.rawValue)
-			newMessage.publicKey = packet.publicKey
-			newMessage.pkiEncrypted = packet.pkiEncrypted
+			if newMessage.toUser?.pkiEncrypted ?? false {
+				newMessage.pkiEncrypted = true
+				newMessage.publicKey = packet.publicKey
+			}
 			if packet.decoded.portnum == PortNum.detectionSensorApp {
 				if !UserDefaults.enableDetectionNotifications {
 					newMessage.read = true
 				}
 			}
+
 			if packet.decoded.replyID > 0 {
 				newMessage.replyID = Int64(packet.decoded.replyID)
 			}
@@ -880,40 +918,46 @@ func textMessageAppPacket(
 					newMessage.toUser = fetchedUsers.first(where: { $0.num == packet.to })
 				}
 			}
+
 			if fetchedUsers.first(where: { $0.num == packet.from }) != nil {
 				newMessage.fromUser = fetchedUsers.first(where: { $0.num == packet.from })
+
 				if !(newMessage.fromUser?.publicKey?.isEmpty ?? true) {
-					/// We have a key, check if it matches
+					// We have a key, check if it matches
 					if newMessage.fromUser?.publicKey != newMessage.publicKey {
 						newMessage.fromUser?.keyMatch = false
 						newMessage.fromUser?.newPublicKey = newMessage.publicKey
 					}
 				} else {
-					/// We have no key, set it
-					newMessage.fromUser?.publicKey = packet.publicKey
-					newMessage.fromUser?.pkiEncrypted = packet.pkiEncrypted
+					/// We have no key, set it if it is not empty
+					if !packet.publicKey.isEmpty {
+						newMessage.fromUser?.pkiEncrypted = true
+						newMessage.fromUser?.publicKey = packet.publicKey
+					}
 				}
+
 				if packet.rxTime > 0 {
 					newMessage.fromUser?.userNode?.lastHeard = Date(timeIntervalSince1970: TimeInterval(Int64(packet.rxTime)))
 				} else {
 					newMessage.fromUser?.userNode?.lastHeard = Date()
 				}
 			}
+
 			newMessage.messagePayload = messageText
 			newMessage.messagePayloadMarkdown = generateMessageMarkdown(message: messageText!)
+
 			if packet.to != Constants.maximumNodeNum && newMessage.fromUser != nil {
 				newMessage.fromUser?.lastMessage = Date()
 			}
+
 			var messageSaved = false
 
 			do {
-
 				try context.save()
 				Logger.data.info("💾 Saved a new message for \(newMessage.messageId)")
 				messageSaved = true
 
 				if messageSaved {
-
 					if packet.decoded.portnum == PortNum.detectionSensorApp && !UserDefaults.enableDetectionNotifications {
 						return
 					}
@@ -932,14 +976,16 @@ func textMessageAppPacket(
 									subtitle: "AKA \(newMessage.fromUser?.shortName ?? "?")",
 									content: messageText!,
 									target: "messages",
-									path: "meshtastic:///messages?userNum=\(newMessage.fromUser?.num ?? 0)&messageId=\(newMessage.messageId)"
+									path: "meshtastic:///messages?userNum=\(newMessage.fromUser?.num ?? 0)&messageId=\(newMessage.messageId)",
+									messageId: newMessage.messageId,
+									channel: newMessage.channel,
+									userNum: Int64(packet.from)
 								)
 							]
 							manager.schedule()
 							Logger.services.debug("iOS Notification Scheduled for text message from \(newMessage.fromUser?.longName ?? "unknown".localized)")
 						}
 					} else if newMessage.fromUser != nil && newMessage.toUser == nil {
-
 						let fetchMyInfoRequest = MyInfoEntity.fetchRequest()
 						fetchMyInfoRequest.predicate = NSPredicate(format: "myNodeNum == %lld", Int64(connectedNode))
 
@@ -962,7 +1008,11 @@ func textMessageAppPacket(
 												subtitle: "AKA \(newMessage.fromUser?.shortName ?? "?")",
 												content: messageText!,
 												target: "messages",
-												path: "meshtastic:///messages?channelId=\(newMessage.channel)&messageId=\(newMessage.messageId)")
+												path: "meshtastic:///messages?channelId=\(newMessage.channel)&messageId=\(newMessage.messageId)",
+												messageId: newMessage.messageId,
+												channel: newMessage.channel,
+												userNum: Int64(newMessage.fromUser?.userId ?? "0")
+											)
 										]
 										manager.schedule()
 										Logger.services.debug("iOS Notification Scheduled for text message from \(newMessage.fromUser?.longName ?? "unknown".localized)")
@@ -970,7 +1020,7 @@ func textMessageAppPacket(
 								}
 							}
 						} catch {
-
+							// Handle error
 						}
 					}
 				}

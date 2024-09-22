@@ -27,6 +27,7 @@ struct NodeMapMapkit: View {
 	@AppStorage("meshMapType") private var meshMapType = 0
 	@AppStorage("meshMapShowNodeHistory") private var meshMapShowNodeHistory = false
 	@AppStorage("meshMapShowRouteLines") private var meshMapShowRouteLines = false
+	@AppStorage("meshMapShowLinkStrengths") private var meshMapShowLinkStrengths = false
 	@State private var selectedMapLayer: MapLayer = .standard
 	@State var waypointCoordinate: WaypointCoordinate?
 	@State var editingWaypoint: Int = 0
@@ -66,6 +67,7 @@ struct NodeMapMapkit: View {
 									userTrackingMode: MKUserTrackingMode.none,
 									showNodeHistory: meshMapShowNodeHistory,
 									showRouteLines: meshMapShowRouteLines,
+									showLinkStrengths: meshMapShowLinkStrengths,
 									customMapOverlay: self.customMapOverlay
 								)
 								VStack(alignment: .leading) {
