@@ -50,9 +50,9 @@ struct MeshMapContent: MapContent {
 		if showLinkStrengths {
 			// todo: powersjcb - add config to toggle this - default to off
 
-			if let connectedNodeNum = BLEManager.shared.connectedPeripheral?.num,
-				let connectedNodePosition = positions.first(where: { $0.nodePosition?.num == connectedNodeNum })?.coordinate {
-					ForEach(positions.filter { $0.nodePosition?.num != connectedNodeNum && $0.nodePosition?.snr != 0 && $0.nodePosition?.hopsAway == 0 }) { position in
+if let connectedNodeNum = BLEManager.shared.connectedPeripheral?.num,
+	let connectedNodePosition = positions.first(where: { $0.nodePosition?.num == connectedNodeNum })?.coordinate {
+		ForEach(positions.filter { $0.nodePosition?.num != connectedNodeNum && $0.nodePosition?.snr != 0 && $0.nodePosition?.hopsAway == 0 }) { position in
 						/// draw line from self to node
 						let hopCoords: [CLLocationCoordinate2D] = [connectedNodePosition, position.coordinate]
 						if let nodePosition = position.nodePosition {
